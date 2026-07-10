@@ -379,8 +379,10 @@ function quit(){S.sess=null;render();}
 /* ================= 渲染 ================= */
 const app=document.getElementById("app"),nav=document.getElementById("nav");
 function render(){
+  const sc=[];document.querySelectorAll(".chips").forEach(el=>sc.push(el.scrollLeft));
   if(S.sess){nav.style.display="none";renderSess();}
   else{nav.style.display="flex";renderNav();({home:renderHome,lib:renderLib,stats:renderStats,me:renderMe})[S.tab]();}
+  document.querySelectorAll(".chips").forEach((el,i)=>{if(sc[i])el.scrollLeft=sc[i];});
   if(S.modal)renderModal();else{const m=document.getElementById("modal");if(m)m.remove();}
 }
 function renderNav(){
@@ -495,19 +497,11 @@ function pickOpt(id){
 
 /* ================= 资料库 ================= */
 function allTags(){const t=[];cards().forEach(c=>(c.tags||[]).forEach(x=>{if(!t.includes(x))t.push(x);}));return t;}
-function renderLib(){
+function libListHTML(){
   const q=S.q.trim();
   let list=filtered().filter(c=>S.tagF==="all"||(c.tags||[]).includes(S.tagF));
   if(q)list=list.filter(c=>c.t.includes(q)||c.a.includes(q)||(c.tags||[]).some(t=>t.includes(q)));
-  const tags=allTags();
-  app.innerHTML=`
-  <div class="row" style="margin-bottom:10px">
-    <input type="text" placeholder="🔍 搜索词条 / 要点 / 标签…" value="${esc(S.q)}" oninput="S.q=this.value;render()" onfocus="this.selectionStart=this.value.length">
-    <button class="btn pri" style="flex:none" onclick="openForm(null)">➕ 新建</button>
-  </div>
-  ${filterBar()}
-  ${tags.length?`<div class="chips"><span class="chip ${S.tagF==='all'?'on':''}" onclick="S.tagF='all';render()">全部标签</span>${tags.map(t=>`<span class="chip ${S.tagF===t?'on':''}" onclick="S.tagF='${esc(t)}';render()">#${esc(t)}</span>`).join("")}</div>`:""}
-  <div class="muted" style="margin:2px 0 6px">${list.length} 条</div>
+  return `<div class="muted" style="margin:2px 0 6px">${list.length} 条</div>
   <div class="card" style="padding:4px 12px">
     ${list.map(c=>`<div class="item">
       <span class="star" onclick="event.stopPropagation();toggleFav('${c.id}')">${ST.favs[c.id]?"⭐":"☆"}</span>
@@ -516,6 +510,18 @@ function renderLib(){
         <div class="muted" style="font-size:11px">${SUBJ[c.s].name} · ${esc(c.ch)} · ${KIND[c.k]||""} ${box(c.id)>=4?"· 已掌握✓":""}</div>
       </div><span class="muted">›</span></div>`).join("")||`<div class="muted center" style="padding:20px">没有匹配的词条</div>`}
   </div>`;
+}
+function updateLibList(){const el=document.getElementById("libList");if(el)el.innerHTML=libListHTML();}
+function renderLib(){
+  const tags=allTags();
+  app.innerHTML=`
+  <div class="row" style="margin-bottom:10px">
+    <input type="text" placeholder="🔍 搜索词条 / 要点 / 标签…" value="${esc(S.q)}" oninput="S.q=this.value;updateLibList()">
+    <button class="btn pri" style="flex:none" onclick="openForm(null)">➕ 新建</button>
+  </div>
+  ${filterBar()}
+  ${tags.length?`<div class="chips"><span class="chip ${S.tagF==='all'?'on':''}" onclick="S.tagF='all';render()">全部标签</span>${tags.map(t=>`<span class="chip ${S.tagF===t?'on':''}" onclick="S.tagF='${esc(t)}';render()">#${esc(t)}</span>`).join("")}</div>`:""}
+  <div id="libList">${libListHTML()}</div>`;
 }
 function toggleFav(id){if(ST.favs[id])delete ST.favs[id];else ST.favs[id]=1;save();render();}
 function openForm(id){
