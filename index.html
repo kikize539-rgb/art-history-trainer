@@ -503,7 +503,22 @@ function allTags(){const t=[];cards().forEach(c=>(c.tags||[]).forEach(x=>{if(!t.
 function libListHTML(){
   const q=S.q.trim();
   let list=filtered().filter(c=>S.tagF==="all"||(c.tags||[]).includes(S.tagF));
-  if(q)list=list.filter(c=>c.t.includes(q)||c.a.includes(q)||(c.tags||[]).some(t=>t.includes(q)));
+  if(q){
+    const scored=[];
+    for(const c of list){
+      let s=0;
+      if(c.t===q)s=100;
+      else if(c.t.startsWith(q))s=80;
+      else if(c.t.includes(q))s=60;
+      else if((c.tags||[]).some(t=>t.includes(q)))s=40;
+      else if(c.a.includes(q))s=20;
+      if(!s)continue;
+      if(c.id.startsWith("u"))s+=5; // 同等匹配度,自己录的优先
+      scored.push([s,c]);
+    }
+    scored.sort((a,b)=>b[0]-a[0]);
+    list=scored.map(x=>x[1]);
+  }
   return `<div class="muted" style="margin:2px 0 6px">${list.length} 条</div>
   <div class="card" style="padding:4px 12px">
     ${list.map(c=>`<div class="item">
@@ -573,9 +588,13 @@ function renderModal(){
     m.innerHTML=`<div class="modal" onclick="if(event.target===this){S.modal=null;render()}">
       <div class="sheet">
         <b>📷 扫描录入</b>
-        <p class="muted" style="line-height:1.7">拍书页或从相册选图,可一次选多页;文字识别<b>全程在手机本地完成</b>,图片不上传。首次使用需联网下载识别组件(约20MB),之后可离线用。拍摄小技巧:光线足、页面放平、尽量只框住需要的段落。</p>
+        <p class="muted" style="line-height:1.7">识别<b>全程在手机本地完成</b>,图片不上传;首次使用需联网下载识别组件(约20MB)。<br>📌 干净的印刷页效果最好;<b>画了重点线/荧光笔/批注的页面识别会明显变差</b>——这种页推荐:在手机相册里用自带"提取文字"复制,直接<b>粘贴到下面文本框</b>,一样能整理入卡。</p>
+        <input type="file" id="scanCam" accept="image/*" capture="environment" style="display:none" onchange="doOCR(this)">
         <input type="file" id="scanFile" accept="image/*" multiple style="display:none" onchange="doOCR(this)">
-        <button class="btn" style="width:100%" onclick="document.getElementById('scanFile').click()">📷 拍照 / 从相册选图(可多选)</button>
+        <div class="row">
+          <button class="btn grow" onclick="document.getElementById('scanCam').click()">📷 直接拍照</button>
+          <button class="btn grow" onclick="document.getElementById('scanFile').click()">🖼 相册多选</button>
+        </div>
         <div id="ocrStatus" class="muted mt"></div>
         <label>识别结果(多页自动拼接,可直接修改;不满意可继续加页)</label>
         <textarea id="ocrText" rows="10" placeholder="识别出的文字会出现在这里…" oninput="S.scanText=this.value">${esc(S.scanText||"")}</textarea>
